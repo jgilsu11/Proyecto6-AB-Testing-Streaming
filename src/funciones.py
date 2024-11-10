@@ -111,24 +111,25 @@ def histograma_normal(df,ejex, titulo, control, tratamiento):
 
 
 
-def usar_whitney(df,columna_grupo , columna_metrica):
-    lista_generos=df[columna_grupo].unique()
-    combinaciones=list(combinations(lista_generos,2))
-    for indice, valor in enumerate(combinaciones):
-        estadistico, p_value= stats.mannwhitneyu(df[df[columna_grupo]== valor[0]][columna_metrica],df[df[columna_grupo]== valor[1]][columna_metrica])
-        print(f"La evaluación de la hipótesis entre {valor[0]} y {valor[1]} da un p-value de {p_value}")
-        if p_value >= 0.05:
-            print("No hay diferencia")
-            print(".................")
-        else:
-            print("Hay diferencia")
-            print(".................")
-
-
-
-
 
 def usar_kolmogorov(df,columna_grupo , columna_metrica):
+    """
+    Realiza el test de Kolmogorov-Smirnov para evaluar si la métrica sigue una distribución normal en diferentes grupos.
+
+    Parámetros:
+    -----------
+    df : pandas.DataFrame
+        DataFrame que contiene los datos a analizar.
+    columna_grupo : str
+        Nombre de la columna que define los grupos para la comparación.
+    columna_metrica : str
+        Nombre de la columna con la métrica a evaluar en términos de normalidad.
+
+    Retorno:
+    --------
+    None
+        Imprime el resultado de normalidad para cada grupo, especificando si sigue una distribución normal.
+    """
     lista_genero= df[columna_grupo].unique().tolist()
     for indice, genero in enumerate(lista_genero):
         normalizale = df[df[columna_grupo] == genero][columna_metrica]
@@ -141,6 +142,23 @@ def usar_kolmogorov(df,columna_grupo , columna_metrica):
 
 
 def usar_bartlett(df, columna_grupos, columna_metrica):
+    """
+    Realiza el test de Bartlett para evaluar la homocedasticidad de la métrica entre diferentes grupos.
+
+    Parámetros:
+    -----------
+    df : pandas.DataFrame
+        DataFrame que contiene los datos a analizar.
+    columna_grupos : str
+        Nombre de la columna que define los grupos para la comparación.
+    columna_metrica : str
+        Nombre de la columna con la métrica a evaluar en términos de varianza.
+
+    Retorno:
+    --------
+    None
+        Imprime el resultado del test de homocedasticidad indicando si las varianzas entre grupos son iguales.
+    """
     unicos=df[columna_grupos].unique()   #lista de grupos
     for grupo in unicos:
         df_metrica= df[df[columna_grupos]== grupo][columna_metrica]
@@ -155,6 +173,23 @@ def usar_bartlett(df, columna_grupos, columna_metrica):
 
 
 def usar_ttest(df, columna_grupos, columna_metrica):
+    """
+    Realiza el test de T para evaluar la diferencia entre grupos en términos de la métrica.
+
+    Parámetros:
+    -----------
+    df : pandas.DataFrame
+        DataFrame que contiene los datos a analizar.
+    columna_grupos : str
+        Nombre de la columna que define los grupos para la comparación.
+    columna_metrica : str
+        Nombre de la columna con la métrica a comparar entre grupos.
+
+    Retorno:
+    --------
+    None
+        Imprime el resultado del test T indicando si hay diferencia significativa entre los grupos.
+    """
     unicos=df[columna_grupos].unique()   #lista de grupos
     for grupo in unicos:
         df_metrica= df[df[columna_grupos]== grupo][columna_metrica]
@@ -171,8 +206,104 @@ def usar_ttest(df, columna_grupos, columna_metrica):
 
 
 def graph_diferencias_entre_grupos(grupo,metrica,df,palette,titulo,ylabel):
+    """
+    Genera una visualización de barras para comparar la métrica entre diferentes grupos.
+
+    Parámetros:
+    -----------
+    grupo : str
+        Nombre de la columna que representa los grupos en el eje x.
+    metrica : str
+        Nombre de la columna con la métrica a comparar entre grupos.
+    df : pandas.DataFrame
+        DataFrame que contiene los datos a visualizar.
+    palette : str
+        Paleta de colores a utilizar para el gráfico.
+    titulo : str
+        Título del gráfico.
+    ylabel : str
+        Etiqueta para el eje y del gráfico.
+
+    Retorno:
+    --------
+    None
+        Muestra el gráfico de barras.
+    """
     plt.figure(figsize=(8,5))
     sns.barplot(x=grupo,y=metrica,data=df, palette=palette)
     plt.title(titulo)
     plt.ylabel(ylabel)
     plt.tight_layout()
+
+
+
+
+def crear_df_grupo(dataframe,columna_grupo,columna_metrica):
+    """
+    Crea una lista de Series, cada una representando los datos de un grupo específico en términos de la métrica.
+
+    Parámetros:
+    -----------
+    dataframe : pandas.DataFrame
+        DataFrame que contiene los datos a procesar.
+    columna_grupo : str
+        Nombre de la columna que define los grupos.
+    columna_metrica : str
+        Nombre de la columna con la métrica para cada grupo.
+
+    Retorno:
+    --------
+    lista : list
+        Lista de Series, cada una con los datos de la métrica para un grupo específico.
+    """
+    lista= []
+    for valor in dataframe[columna_grupo].unique():
+        datos_filtrados=dataframe[dataframe[columna_grupo]== valor][columna_metrica]
+        lista.append(datos_filtrados)
+
+    return lista
+
+
+
+def elegir_test(lista_datos,dependencia=False):
+    """
+    Selecciona y ejecuta el test estadístico adecuado para comparar grupos de datos, considerando el número de grupos y la dependencia.
+
+    Parámetros:
+    -----------
+    lista_datos : list
+        Lista de datos para cada grupo a comparar.
+    dependencia : bool, opcional
+        Indica si los grupos son dependientes (por defecto es False).
+
+    Retorno:
+    --------
+    None
+        Imprime el test estadístico seleccionado y el resultado, indicando si existen diferencias significativas entre los grupos.
+    """
+    if len(lista_datos) > 2:
+        print("El test óptimo es Kruskall-Wallis")
+        estadistico, p_value= stats.kruskal(*lista_datos)                 #al desempaquetar, de la A obtenemos sus estadisticos el * es para quitar la lista
+        resultado = p_value > 0.05
+        if resultado ==True:
+            print(f"Dado que el p_value es {p_value}, no hay evidencia suficiente para rechazar Ho con lo que no hay diferencia entre grupos")
+        else:
+            print(f"Dado que el p_value es {p_value}, hay evidencia suficiente para rechazar Ho con lo que hay diferencia entre grupos")
+            
+    elif len(lista_datos) == 2 and dependencia:
+        print("El test óptimo es Willcoxon") 
+        estadistico, p_value= stats.wilcoxon(*lista_datos)               #al desempaquetar, de la A obtenemos sus estadisticos el * es para quitar la lista
+        resultado = p_value > 0.05
+        if resultado ==True:
+            print(f"Dado que el p_value es {p_value}, no hay evidencia suficiente para rechazar Ho con lo que no hay diferencia entre grupos")
+        else:
+            print(f"Dado que el p_value es {p_value}, hay evidencia suficiente para rechazar Ho con lo que hay diferencia entre grupos")
+            
+    else:
+        print("El test óptimo es Mann-Whitney")
+        estadistico, p_value= stats.mannwhitneyu(*lista_datos)               #al desempaquetar, de la A obtenemos sus estadisticos el * es para quitar la lista
+        resultado = p_value > 0.05
+        if resultado ==True:
+            print(f"Dado que el p_value es {p_value}, no hay evidencia suficiente para rechazar Ho con lo que no hay diferencia entre grupos")
+        else:
+            print(f"Dado que el p_value es {p_value}, hay evidencia suficiente para rechazar Ho con lo que hay diferencia entre grupos")
